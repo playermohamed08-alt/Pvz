@@ -1,0 +1,32 @@
+name: Build 32-bit APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK and NDK
+        run: |
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "cmake;3.22.1" "ndk;27.2.12479018"
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Build APK
+        run: gradle :app:assembleRelease --no-daemon
+      - name: Verify ABI
+        run: |
+          unzip -l app/build/outputs/apk/release/app-armeabi-v7a-release.apk | grep 'lib/armeabi-v7a/'
+          if unzip -l app/build/outputs/apk/release/app-armeabi-v7a-release.apk | grep -q 'lib/arm64-v8a/'; then exit 1; fi
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: GardenDefense32-APK
+          path: app/build/outputs/apk/release/app-armeabi-v7a-release.apk
